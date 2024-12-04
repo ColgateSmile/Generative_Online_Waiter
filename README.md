@@ -24,7 +24,7 @@ An interactive online waiter chatbot built with React and integrated with the Op
 ## **Setup and Installation**
 1. **Clone the Repository**:
    ```bash
-   git clone [https://github.com/your-repo-name.git](https://github.com/ColgateSmile/Generative_Online_Waiter.git)
+   git clone (https://github.com/ColgateSmile/Generative_Online_Waiter.git)
    cd online-waiter-app
    ```
 
