@@ -186,3 +186,86 @@ h1 {
     padding: 8px 15px;
   }
 }
+/* Suggestions Section */
+.suggestions {
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-top: 1px solid #ddd;
+}
+
+.suggestions h4 {
+  margin-bottom: 10px;
+  color: #4caf50;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px; /* Add spacing between suggestion items */
+  padding: 10px; /* Add padding for a cleaner look */
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.suggestion span {
+  flex: 1; /* Ensure text takes up space */
+  margin-right: 10px; /* Add space between text and buttons */
+}
+
+.suggestion button {
+  padding: 8px 12px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 5px; /* Add spacing between buttons */
+}
+
+.suggestion button:hover {
+  background-color: #45a049;
+}
+.real-time-chat {
+  text-align: center;
+  margin: 20px;
+}
+
+.real-time-chat button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.real-time-chat button:hover {
+  background-color: #45a049;
+}
+
+.real-time-chat .transcript,
+.real-time-chat .response {
+  margin: 20px 0;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.real-time-chat .transcript h4,
+.real-time-chat .response h4 {
+  margin-bottom: 10px;
+  color: #4caf50;
+}
+
+.real-time-chat .transcript p,
+.real-time-chat .response p {
+  margin: 0;
+  font-style: italic;
+  color: #555;
+}
+
