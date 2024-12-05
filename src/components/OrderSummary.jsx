@@ -1,17 +1,27 @@
 import React from "react";
 
-const OrderSummary = ({ orders, total }) => {
+const OrderSummary = ({ orders }) => {
+  const calculateTotal = () => {
+    return orders.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
+  };
+
   return (
     <div className="order-summary">
-      <h2>Order Summary</h2>
-      <ul>
-        {orders.map((order, index) => (
-          <li key={index}>
-            {order.name} - ${order.price}
-          </li>
-        ))}
-      </ul>
-      <h3>Total: ${total}</h3>
+      <h3>Order Summary</h3>
+      {orders.length > 0 ? (
+        <>
+          <ul>
+            {orders.map((item) => (
+              <li key={item.name}>
+                {item.name} x {item.quantity} - ${item.price.toFixed(2)} each
+              </li>
+            ))}
+          </ul>
+          <p>Total: ${calculateTotal()}</p>
+        </>
+      ) : (
+        <p>No items in your order.</p>
+      )}
     </div>
   );
 };

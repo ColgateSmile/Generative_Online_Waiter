@@ -2,26 +2,24 @@ import React, { useState } from "react";
 import axios from "axios";
 import menu from "../data";
 
-const ChatBox = ({ addOrder }) => {
+const ChatBox = ({ updateOrder }) => {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
-  const [loading, setLoading] = useState(false); // Loading state for API call
+  const [loading, setLoading] = useState(false);
+  const [orderedItems, setOrderedItems] = useState([]); // Confirmed items with quantities
+  const [suggestedItems, setSuggestedItems] = useState([]); // Suggestions
 
-  // Load API key from environment variables
   const API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
 
   const handleSend = async () => {
     const userMessage = userInput.trim();
     if (!userMessage) return;
 
-    // Display user message
     setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
     setUserInput("");
-
-    setLoading(true); // Start loading spinner
+    setLoading(true);
 
     try {
-      // Generate system message and user message for API call
       const systemMessage = {
         role: "system",
         content: `
@@ -29,66 +27,96 @@ const ChatBox = ({ addOrder }) => {
           The menu is: ${menu
             .map((item) => `${item.name} ($${item.price})`)
             .join(", ")}. 
-          If a customer orders, confirm the order, suggest drinks if no drinks are selected, and summarize the total.
+          If a customer orders, confirm the order, suggest complementary items, and summarize the total. Process orders with quantities like "2 pizzas".
         `,
       };
 
       const userMessageForAPI = { role: "user", content: userMessage };
 
-      // Make API call to OpenAI
       const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions", // Correct endpoint
+        "https://api.openai.com/v1/chat/completions",
         {
-          model: "gpt-3.5-turbo", // Use supported model
-          messages: [systemMessage, userMessageForAPI], // Messages array
-          max_tokens: 150, // Limit response length
-          temperature: 0.7, // Adjust randomness
+          model: "gpt-3.5-turbo",
+          messages: [systemMessage, userMessageForAPI],
+          max_tokens: 150,
+          temperature: 0.7,
         },
         {
           headers: {
-            Authorization: `Bearer ${API_KEY}`, // Use API_KEY from environment
+            Authorization: `Bearer ${API_KEY}`,
             "Content-Type": "application/json",
           },
         }
       );
 
-      // Extract bot's response
       const botMessage = response.data.choices[0].message.content.trim();
-
-      // Add bot message to chat
       setMessages((prev) => [...prev, { sender: "bot", text: botMessage }]);
 
-      // Extract orders from bot response
-      processBotResponse(botMessage);
+      processBotResponse(botMessage, userMessage);
     } catch (error) {
-      // Log detailed error information
-      if (error.response) {
-        console.error("API Response Error:", {
-          status: error.response.status,
-          data: error.response.data,
-        });
-      } else {
-        console.error("Error Message:", error.message);
-      }
-
+      console.error("Error with OpenAI API:", error);
       setMessages((prev) => [
         ...prev,
         { sender: "bot", text: "Sorry, I couldn't process that. Please try again." },
       ]);
     } finally {
-      setLoading(false); // Stop loading spinner
+      setLoading(false);
     }
   };
 
-  // Process OpenAI's response to extract orders
-  const processBotResponse = (response) => {
-    const lowerCaseResponse = response.toLowerCase();
+  const processBotResponse = (botResponse, userInput) => {
+    const lowerCaseBotResponse = botResponse.toLowerCase();
+    const lowerCaseUserInput = userInput.toLowerCase();
 
     menu.forEach((item) => {
-      if (lowerCaseResponse.includes(item.name.toLowerCase())) {
-        addOrder(item);
+      const itemRegex = new RegExp(`(\\d+)?\\s*${item.name.toLowerCase()}`, "i");
+      const match = lowerCaseUserInput.match(itemRegex);
+
+      if (match) {
+        const quantity = parseInt(match[1]) || 1;
+        addOrder(item, quantity);
       }
     });
+
+    const newSuggestions = menu.filter(
+      (item) =>
+        lowerCaseBotResponse.includes(item.name.toLowerCase()) &&
+        !orderedItems.some((order) => order.name === item.name)
+    );
+    setSuggestedItems(newSuggestions);
+  };
+
+  const addOrder = (item, quantity = 1) => {
+    setOrderedItems((prev) => {
+      const existingItem = prev.find((order) => order.name === item.name);
+
+      if (existingItem) {
+        existingItem.quantity += quantity;
+        updateOrder([...prev]); // Update parent state
+        return [...prev];
+      } else {
+        const updatedOrders = [...prev, { ...item, quantity }];
+        updateOrder(updatedOrders); // Update parent state
+        return updatedOrders;
+      }
+    });
+  };
+
+  const handleSuggestionAction = (item, add) => {
+    if (add) {
+      addOrder(item, 1);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: `${item.name} has been added to your order.` },
+      ]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: `${item.name} has been skipped.` },
+      ]);
+    }
+
+    setSuggestedItems((prev) => prev.filter((suggestion) => suggestion.name !== item.name));
   };
 
   return (
@@ -105,16 +133,31 @@ const ChatBox = ({ addOrder }) => {
         {loading && <div className="message bot">Processing...</div>}
       </div>
       <div className="input-section">
-        <input
-          type="text"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder="What would you like to order?"
-          disabled={loading} // Disable input while processing
-        />
-        <button onClick={handleSend} disabled={loading || !userInput.trim()}>
-          {loading ? "Sending..." : "Send"}
-        </button>
+        {suggestedItems.length > 0 ? (
+          <div className="suggestions">
+            <h4>Suggestions:</h4>
+            {suggestedItems.map((item) => (
+              <div key={item.name} className="suggestion">
+                <span>{item.name} - ${item.price.toFixed(2)}</span>
+                <button onClick={() => handleSuggestionAction(item, true)}>Add</button>
+                <button onClick={() => handleSuggestionAction(item, false)}>Skip</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="What would you like to order?"
+              disabled={loading}
+            />
+            <button onClick={handleSend} disabled={loading || !userInput.trim()}>
+              {loading ? "Sending..." : "Send"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
