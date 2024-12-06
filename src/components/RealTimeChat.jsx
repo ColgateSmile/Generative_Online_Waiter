@@ -4,29 +4,37 @@ const RealTimeChat = ({ sendMessage }) => {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
-  const [websocket, setWebsocket] = useState(null);
-  const canvasRef = useRef(null);
+  const websocketRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const canvasRef = useRef(null);
 
   const API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
-  const REALTIME_ENDPOINT = "wss://api.openai.com/v1/realtime";
+  const REALTIME_ENDPOINT =
+    "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
 
   const startListening = async () => {
     try {
       setListening(true);
 
-      // Set up WebSocket connection
-      const ws = new WebSocket(REALTIME_ENDPOINT);
+      // Initialize WebSocket connection
+      const ws = new WebSocket(REALTIME_ENDPOINT, [], {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "OpenAI-Beta": "realtime=v1",
+        },
+      });
+
       ws.onopen = () => {
         console.log("WebSocket connected.");
+        // Configure session
         ws.send(
           JSON.stringify({
-            type: "start",
-            data: {
-              apiKey: API_KEY,
-              format: "audio/wav",
-              language: "en-US",
+            type: "session.update",
+            session: {
+              voice: "alloy",
+              instructions:
+                "You are a friendly and helpful assistant. Speak in a warm and engaging tone.",
             },
           })
         );
@@ -34,39 +42,50 @@ const RealTimeChat = ({ sendMessage }) => {
 
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        if (message.type === "transcript") {
-          setTranscript(message.data.text);
-        } else if (message.type === "response") {
-          setResponse(message.data.text);
-          sendMessage(message.data.text);
+        console.log("WebSocket message received:", message);
+
+        if (message.type === "conversation.item.created") {
+          if (message.item.type === "message") {
+            if (message.item.role === "user") {
+              setTranscript(message.item.content[0]?.text || "");
+            } else if (message.item.role === "assistant") {
+              setResponse(message.item.content[0]?.text || "");
+              sendMessage(message.item.content[0]?.text || "");
+            }
+          }
         }
       };
 
       ws.onclose = () => {
         console.log("WebSocket disconnected.");
+        setListening(false);
       };
 
       ws.onerror = (error) => {
         console.error("WebSocket error:", error);
+        setListening(false);
       };
 
-      setWebsocket(ws);
+      websocketRef.current = ws;
 
-      // Set up microphone access and recording
+      // Setup microphone access and recording
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-        if (websocket?.readyState === WebSocket.OPEN) {
-          websocket.send(event.data); // Send audio data in chunks
+        if (websocketRef.current?.readyState === WebSocket.OPEN) {
+          websocketRef.current.send(
+            JSON.stringify({
+              type: "input_audio_buffer.append",
+              audio: event.data,
+            })
+          );
         }
       };
 
-      mediaRecorder.start(100); // Capture audio every 100ms
+      mediaRecorder.start(100); // Record chunks every 100ms
       mediaRecorderRef.current = mediaRecorder;
 
-      // Start visualization
       startVisualization(stream);
     } catch (error) {
       console.error("Error starting microphone:", error);
@@ -76,12 +95,15 @@ const RealTimeChat = ({ sendMessage }) => {
 
   const stopListening = () => {
     setListening(false);
+
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
     }
-    if (websocket) {
-      websocket.close();
+
+    if (websocketRef.current) {
+      websocketRef.current.close();
     }
+
     stopVisualization();
   };
 
@@ -99,6 +121,8 @@ const RealTimeChat = ({ sendMessage }) => {
     const canvasCtx = canvas.getContext("2d");
 
     const render = () => {
+      if (!canvasCtx) return;
+
       analyzer.getByteFrequencyData(dataArray);
 
       canvasCtx.fillStyle = "#f5f5f5";
@@ -111,7 +135,12 @@ const RealTimeChat = ({ sendMessage }) => {
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i];
         canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-        canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+        canvasCtx.fillRect(
+          x,
+          canvas.height - barHeight / 2,
+          barWidth,
+          barHeight / 2
+        );
         x += barWidth + 1;
       }
 

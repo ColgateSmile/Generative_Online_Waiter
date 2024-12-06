@@ -64,16 +64,23 @@ An interactive online waiter chatbot built with React and integrated with the Op
 ```
 online-waiter-app/
 ├── public/
+│   ├── favicon.ico
+│   ├── index.html
 ├── src/
 │   ├── components/
-│   │   ├── ChatBox.jsx       # Main chatbot component
+│   │   ├── ChatBox.jsx        # Main chatbot component (text-based chat)
+│   │   ├── RealTimeChat.jsx   # Real-time chat component (audio + WebSocket)
 │   ├── data/
-│   │   ├── menu.js           # Predefined menu items
-│   ├── App.js                # Root application file
-│   ├── index.js              # Entry point
-├── .env                      # Environment variables
-├── package.json              # Project configuration
-```
+│   │   ├── menu.js            # Predefined menu items
+│   ├── App.js                 # Root application file
+│   ├── index.js               # Entry point for React app
+│   ├── App.css                # Styling for components
+├── server/
+│   ├── relay-server.js        # Node.js relay server for secure API calls
+│   ├── .env                   # Backend environment variables (API key)
+│   ├── package.json           # Backend dependencies
+├── .env                       # Frontend environment variables (e.g., API URLs)
+├── package.json               # Frontend dependencies
 
 ---
 
