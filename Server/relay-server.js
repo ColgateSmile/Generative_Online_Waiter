@@ -15,6 +15,7 @@ if (!OPENAI_API_KEY) {
     );
     process.exit(1);
   }
+  
 const REALTIME_API_URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01";
 
 // Root route

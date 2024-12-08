@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import menu from "../data";
+import menu from "../data/data";
 
 const ChatBox = ({ updateOrder }) => {
   const [messages, setMessages] = useState([]);
